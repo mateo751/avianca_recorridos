@@ -1,4 +1,4 @@
-name: avianca_recorridos_final_app
+name: taxi_recorridos_app
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -34,6 +34,19 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  firebase_core: ^2.32.0
+  firebase_auth: ^4.15.0
+  firebase_storage: ^11.3.0
+  cloud_firestore: ^4.17.5
+  provider: ^6.0.0
+  intl: ^0.18.1
+  excel: ^2.0.6
+  path_provider: ^2.0.14
+  permission_handler: ^11.0.1
+  open_file: ^3.2.1
+  image_picker: ^1.0.4
+  url_launcher: ^6.1.10
+  iconsax: ^0.0.8
 
 dev_dependencies:
   flutter_test:
@@ -52,10 +65,14 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
 
+
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - lib/assets/logoAvianca.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
