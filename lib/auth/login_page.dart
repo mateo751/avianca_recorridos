@@ -77,13 +77,19 @@ class _LoginPageState extends State<LoginPage> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Correo electrónico',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black, // ← CAMBIADO: ahora es negro visible
+                    ),
                   ),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
+                  style: TextStyle(
+                    color: Colors.black,
+                  ), // ← AGREGADO: texto negro al escribir
                   decoration: InputDecoration(
                     hintText: 'camilayokoo@gmail.com',
                     filled: true,
@@ -101,13 +107,19 @@ class _LoginPageState extends State<LoginPage> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Contraseña',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black, // ← AGREGADO: negro explícito
+                    ),
                   ),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _passwordController,
                   obscureText: true,
+                  style: TextStyle(
+                    color: Colors.black,
+                  ), // ← AGREGADO: texto negro al escribir
                   decoration: InputDecoration(
                     hintText: '**********',
                     filled: true,
@@ -137,6 +149,8 @@ class _LoginPageState extends State<LoginPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color:
+                            Colors.white, // ← AGREGADO: texto blanco en botón
                       ),
                     ),
                   ),
