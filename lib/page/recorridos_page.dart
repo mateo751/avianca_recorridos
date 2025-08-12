@@ -42,14 +42,19 @@ class _RecorridosPageState extends State<RecorridosPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0C2A),
+      backgroundColor: Colors.white, // Fondo blanco
       appBar: AppBar(
         title: const Text(
           'Registro de Recorrido',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(
+            color: Colors.black87, // Texto negro
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        backgroundColor: const Color(0xFF1A1A40),
-        iconTheme: const IconThemeData(color: Colors.cyanAccent),
+        backgroundColor: Colors.white, // AppBar blanco
+        elevation: 0, // Sin sombra
+        iconTheme: const IconThemeData(color: Colors.black87), // Icono negro
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -59,6 +64,11 @@ class _RecorridosPageState extends State<RecorridosPage> {
             );
           },
         ),
+        // Línea sutil en la parte inferior
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: Colors.grey.withOpacity(0.2), height: 1),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -66,6 +76,7 @@ class _RecorridosPageState extends State<RecorridosPage> {
           key: _formKey,
           child: Column(
             children: [
+              const SizedBox(height: 10),
               _buildCard('Tipo de Recorrido', _buildTipoRecorrido()),
               const SizedBox(height: 20),
               _buildCard('Fecha', _buildDatePicker()),
@@ -73,17 +84,35 @@ class _RecorridosPageState extends State<RecorridosPage> {
               _buildCard('Hora', _buildHoraDropdown()),
               if (_otraHora)
                 Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: TextFormField(
-                    controller: _horaManualController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _inputStyle('Especificar hora'),
-                    validator: (value) {
-                      if (_otraHora && (value == null || value.isEmpty)) {
-                        return 'Ingrese la hora';
-                      }
-                      return null;
-                    },
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.grey.withOpacity(0.2),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextFormField(
+                      controller: _horaManualController,
+                      style: const TextStyle(color: Colors.black87),
+                      decoration: _inputStyle('Especificar hora'),
+                      validator: (value) {
+                        if (_otraHora && (value == null || value.isEmpty)) {
+                          return 'Ingrese la hora';
+                        }
+                        return null;
+                      },
+                    ),
                   ),
                 ),
               const SizedBox(height: 20),
@@ -97,7 +126,7 @@ class _RecorridosPageState extends State<RecorridosPage> {
                 'Datos del Cliente',
                 TextFormField(
                   controller: _nombreController,
-                  style: const TextStyle(color: Colors.white),
+                  style: const TextStyle(color: Colors.black87),
                   decoration: _inputStyle('Nombre del cliente'),
                   validator:
                       (value) =>
@@ -106,27 +135,48 @@ class _RecorridosPageState extends State<RecorridosPage> {
                               : null,
                 ),
               ),
-              const SizedBox(height: 30),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.save, size: 24, color: Colors.white),
-                label: const Text(
-                  'GUARDAR RECORRIDO',
-                  style: TextStyle(fontSize: 16, color: Colors.white),
+              const SizedBox(height: 40),
+
+              // Botón de guardar
+              Container(
+                width: double.infinity,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE41E1E), // Color rojo de Avianca
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFE41E1E).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                onPressed: _guardarRecorrido,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00EFFF),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 30,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  icon: const Icon(
+                    Icons.save_outlined,
+                    size: 24,
+                    color: Colors.white,
                   ),
-                  elevation: 10,
-                  shadowColor: Colors.cyanAccent,
+                  label: const Text(
+                    'GUARDAR RECORRIDO',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onPressed: _guardarRecorrido,
                 ),
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -137,12 +187,20 @@ class _RecorridosPageState extends State<RecorridosPage> {
   InputDecoration _inputStyle(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Colors.white70),
+      hintStyle: TextStyle(color: Colors.grey.shade500),
       filled: true,
-      fillColor: const Color(0xFF2B2B50),
+      fillColor: Colors.grey.withOpacity(0.05),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE41E1E), width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
@@ -151,15 +209,16 @@ class _RecorridosPageState extends State<RecorridosPage> {
   Widget _buildCard(String title, Widget child) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A40),
-        borderRadius: BorderRadius.circular(15),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyanAccent.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -169,12 +228,12 @@ class _RecorridosPageState extends State<RecorridosPage> {
           Text(
             title,
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
+              color: Colors.black87,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           child,
         ],
       ),
@@ -185,17 +244,27 @@ class _RecorridosPageState extends State<RecorridosPage> {
     final tipos = ['Entrada', 'Salida', 'Cancelada - Pagada', 'Maletas'];
     return Wrap(
       spacing: 10,
+      runSpacing: 10,
       children:
           tipos.map((tipo) {
             final selected = _tipoRecorrido == tipo;
-            return ChoiceChip(
+            return FilterChip(
               label: Text(tipo),
               selected: selected,
               onSelected: (_) => setState(() => _tipoRecorrido = tipo),
-              selectedColor: Colors.cyanAccent,
-              backgroundColor: Colors.grey.shade800,
+              selectedColor: const Color(0xFFE41E1E).withOpacity(0.1),
+              backgroundColor: Colors.grey.withOpacity(0.1),
+              checkmarkColor: const Color(0xFFE41E1E),
               labelStyle: TextStyle(
-                color: selected ? Colors.black : Colors.white,
+                color: selected ? const Color(0xFFE41E1E) : Colors.black87,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              side: BorderSide(
+                color:
+                    selected
+                        ? const Color(0xFFE41E1E)
+                        : Colors.grey.withOpacity(0.3),
+                width: selected ? 2 : 1,
               ),
             );
           }).toList(),
@@ -213,10 +282,11 @@ class _RecorridosPageState extends State<RecorridosPage> {
           builder:
               (context, child) => Theme(
                 data: Theme.of(context).copyWith(
-                  colorScheme: const ColorScheme.dark(
-                    primary: Colors.cyanAccent,
-                    surface: Color(0xFF1A1A40),
-                    onSurface: Colors.white,
+                  colorScheme: const ColorScheme.light(
+                    primary: Color(0xFFE41E1E), // Color rojo de Avianca
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: Colors.black,
                   ),
                 ),
                 child: child!,
@@ -225,10 +295,11 @@ class _RecorridosPageState extends State<RecorridosPage> {
         if (fecha != null) setState(() => _fecha = fecha);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF2B2B50),
+          color: Colors.grey.withOpacity(0.05),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.withOpacity(0.2)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -237,9 +308,12 @@ class _RecorridosPageState extends State<RecorridosPage> {
               _fecha != null
                   ? DateFormat('dd/MM/yyyy').format(_fecha!)
                   : 'Seleccione una fecha',
-              style: const TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(
+                color: _fecha != null ? Colors.black87 : Colors.grey.shade500,
+                fontSize: 16,
+              ),
             ),
-            const Icon(Icons.calendar_today, color: Colors.cyanAccent),
+            const Icon(Icons.calendar_today_outlined, color: Color(0xFFE41E1E)),
           ],
         ),
       ),
@@ -249,20 +323,20 @@ class _RecorridosPageState extends State<RecorridosPage> {
   Widget _buildHoraDropdown() {
     return DropdownButtonFormField<String>(
       value: _horaSeleccionada,
-      dropdownColor: const Color(0xFF2B2B50),
+      dropdownColor: Colors.white,
       decoration: _inputStyle('Seleccione una hora'),
-      icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-      style: const TextStyle(color: Colors.white),
+      icon: const Icon(Icons.arrow_drop_down, color: Colors.black54),
+      style: const TextStyle(color: Colors.black87),
       items: [
         ..._horasDisponibles.map(
           (h) => DropdownMenuItem(
             value: h,
-            child: Text(h, style: const TextStyle(color: Colors.white)),
+            child: Text(h, style: const TextStyle(color: Colors.black87)),
           ),
         ),
         const DropdownMenuItem(
           value: 'otro',
-          child: Text('Otra hora', style: TextStyle(color: Colors.white)),
+          child: Text('Otra hora', style: TextStyle(color: Colors.black87)),
         ),
       ],
       onChanged: (value) {
@@ -273,9 +347,9 @@ class _RecorridosPageState extends State<RecorridosPage> {
         });
       },
       validator: (value) => value == null ? 'Seleccione una hora' : null,
-      hint: const Text(
+      hint: Text(
         'Seleccione una hora',
-        style: TextStyle(color: Colors.white70),
+        style: TextStyle(color: Colors.grey.shade500),
       ),
     );
   }
@@ -283,24 +357,24 @@ class _RecorridosPageState extends State<RecorridosPage> {
   Widget _buildDestinoDropdown() {
     return DropdownButtonFormField<String>(
       value: _destino,
-      dropdownColor: const Color(0xFF2B2B50),
+      dropdownColor: Colors.white,
       decoration: _inputStyle('Seleccione un destino'),
-      icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-      style: const TextStyle(color: Colors.white),
+      icon: const Icon(Icons.arrow_drop_down, color: Colors.black54),
+      style: const TextStyle(color: Colors.black87),
       items:
           _destinos
               .map(
                 (d) => DropdownMenuItem(
                   value: d,
-                  child: Text(d, style: const TextStyle(color: Colors.white)),
+                  child: Text(d, style: const TextStyle(color: Colors.black87)),
                 ),
               )
               .toList(),
       onChanged: (value) => setState(() => _destino = value),
       validator: (value) => value == null ? 'Seleccione un destino' : null,
-      hint: const Text(
+      hint: Text(
         'Seleccione un destino',
-        style: TextStyle(color: Colors.white70),
+        style: TextStyle(color: Colors.grey.shade500),
       ),
     );
   }
@@ -308,16 +382,28 @@ class _RecorridosPageState extends State<RecorridosPage> {
   Widget _buildPasajerosSelector() {
     return Wrap(
       spacing: 10,
+      runSpacing: 10,
       children: List.generate(4, (i) {
         final num = i + 1;
         final selected = _pasajeros == num;
-        return ChoiceChip(
+        return FilterChip(
           label: Text('$num'),
           selected: selected,
           onSelected: (_) => setState(() => _pasajeros = num),
-          selectedColor: Colors.cyanAccent,
-          backgroundColor: Colors.grey.shade800,
-          labelStyle: TextStyle(color: selected ? Colors.black : Colors.white),
+          selectedColor: const Color(0xFFE41E1E).withOpacity(0.1),
+          backgroundColor: Colors.grey.withOpacity(0.1),
+          checkmarkColor: const Color(0xFFE41E1E),
+          labelStyle: TextStyle(
+            color: selected ? const Color(0xFFE41E1E) : Colors.black87,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+          ),
+          side: BorderSide(
+            color:
+                selected
+                    ? const Color(0xFFE41E1E)
+                    : Colors.grey.withOpacity(0.3),
+            width: selected ? 2 : 1,
+          ),
         );
       }),
     );
@@ -326,17 +412,27 @@ class _RecorridosPageState extends State<RecorridosPage> {
   Widget _buildEquipajeSwitch() {
     return Wrap(
       spacing: 10,
+      runSpacing: 10,
       children:
           ['Sí', 'No'].map((e) {
             final bool selected = _equipaje == (e == 'Sí');
-            return ChoiceChip(
+            return FilterChip(
               label: Text(e),
               selected: selected,
               onSelected: (_) => setState(() => _equipaje = (e == 'Sí')),
-              selectedColor: Colors.cyanAccent,
-              backgroundColor: Colors.grey.shade800,
+              selectedColor: const Color(0xFFE41E1E).withOpacity(0.1),
+              backgroundColor: Colors.grey.withOpacity(0.1),
+              checkmarkColor: const Color(0xFFE41E1E),
               labelStyle: TextStyle(
-                color: selected ? Colors.black : Colors.white,
+                color: selected ? const Color(0xFFE41E1E) : Colors.black87,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              side: BorderSide(
+                color:
+                    selected
+                        ? const Color(0xFFE41E1E)
+                        : Colors.grey.withOpacity(0.3),
+                width: selected ? 2 : 1,
               ),
             );
           }).toList(),
@@ -353,8 +449,15 @@ class _RecorridosPageState extends State<RecorridosPage> {
           _pasajeros == null ||
           _equipaje == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Por favor completa todos los campos obligatorios.'),
+          SnackBar(
+            content: const Text(
+              'Por favor completa todos los campos obligatorios.',
+            ),
+            backgroundColor: const Color(0xFFE41E1E),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
         return;
@@ -373,7 +476,14 @@ class _RecorridosPageState extends State<RecorridosPage> {
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Recorrido registrado con éxito')),
+          SnackBar(
+            content: const Text('Recorrido registrado con éxito'),
+            backgroundColor: const Color(0xFF4CAF50),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
         );
 
         setState(() {
@@ -388,9 +498,16 @@ class _RecorridosPageState extends State<RecorridosPage> {
           _nombreController.clear();
         });
       } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error al guardar: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar: $e'),
+            backgroundColor: const Color(0xFFE41E1E),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
       }
     }
   }

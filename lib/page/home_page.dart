@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'package:taxi_recorridos_app/page/registro_excel.dart';
 import 'package:taxi_recorridos_app/page/perfil_page.dart';
 import 'package:taxi_recorridos_app/page/soporte_page.dart';
@@ -15,205 +17,423 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 0;
-  int _selectedTile = 0;
-  final PageController _pageController = PageController();
+  // Variable _selectedIndex eliminada - ya no se necesita
+  List<Map<String, dynamic>> _registrosRecientes = [];
+  bool _cargandoRegistros = true;
 
-  final List<String> imageUrls = [
-    'https://media.istockphoto.com/id/1454401772/es/vector/velocidad-abstracta-inicio-de-negocios-lanzamiento-de-producto-con-concepto-de-autom%C3%B3vil.jpg?s=612x612&w=0&k=20&c=tK05m2RbDREhnFXJim8MF8BqxWMKZovyHUUllrM854M=',
-    'https://media.istockphoto.com/id/890204750/es/foto/concepto-de-transporte-y-dise%C3%B1o.jpg?s=170667a&w=0&k=20&c=LN0xKQ2hLqolsIA7T1MRfXMr9eIRr5CUsKuWzFBXsGQ=',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _cargarRegistrosRecientes();
+  }
 
-  final List<Map<String, dynamic>> options = [
-    {'label': 'Inicio', 'icon': Icons.dashboard_customize},
-    {'label': 'Registros', 'icon': Icons.receipt_long},
-    {'label': 'Perfil', 'icon': Icons.person},
-    {'label': 'Soporte', 'icon': Icons.support_agent},
-  ];
+  Future<void> _cargarRegistrosRecientes() async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('recorridos')
+              .where('userId', isEqualTo: widget.user.uid)
+              .orderBy('fecha', descending: true)
+              .limit(5) // Solo los 5 más recientes
+              .get();
 
-  void _onItemTapped(int index) {
-    setState(() => _selectedIndex = index);
+      final datos =
+          snapshot.docs
+              .map((doc) {
+                final data = doc.data();
+                data['id'] = doc.id;
+                return data;
+              })
+              .where((r) => r['nombreCliente'] != null && r['fecha'] != null)
+              .toList();
+
+      setState(() {
+        _registrosRecientes = datos;
+        _cargandoRegistros = false;
+      });
+    } catch (e) {
+      print('Error al cargar registros: $e');
+      setState(() {
+        _cargandoRegistros = false;
+      });
+    }
+  }
+
+  Widget _buildAviancaHeader(BuildContext scaffoldContext) {
+    return Container(
+      width: double.infinity,
+      color: Colors.white,
+      child: SafeArea(
+        bottom: false,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          child: Row(
+            children: [
+              // Menú hamburguesa - Funcional
+              GestureDetector(
+                onTap: () {
+                  Scaffold.of(scaffoldContext).openDrawer();
+                },
+                child: Container(
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 25,
+                        height: 3,
+                        color: Colors.black,
+                        margin: EdgeInsets.only(bottom: 4),
+                      ),
+                      Container(
+                        width: 20,
+                        height: 3,
+                        color: Colors.black,
+                        margin: EdgeInsets.only(bottom: 4),
+                      ),
+                      Container(width: 25, height: 3, color: Colors.black),
+                    ],
+                  ),
+                ),
+              ),
+              Spacer(),
+              // Logo Avianca
+              Container(
+                height: 40,
+                child: Image.asset('lib/assets/logoAvianca.png', height: 500),
+              ),
+              Spacer(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserWelcome() {
+    return Container(
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Color(0xFFE8E8E8),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.black,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.person, color: Colors.white, size: 30),
+          ),
+          SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hola, ${widget.user.email ?? "Usuario"}',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Conectado al sistema !',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRegistrosTable() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: Color(0xFFE8E8E8),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        children: [
+          // Header de la tabla
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+            decoration: BoxDecoration(
+              color: Color(0xFFE8E8E8),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(15),
+                topRight: Radius.circular(15),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'Cliente',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    'Tipo',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'Fecha',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    'Hora',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 30,
+                  child: Icon(Icons.filter_list, color: Colors.black, size: 20),
+                ),
+              ],
+            ),
+          ),
+          // Contenido de la tabla
+          if (_cargandoRegistros)
+            Container(
+              padding: EdgeInsets.all(40),
+              child: Center(
+                child: CircularProgressIndicator(color: Color(0xFFE41E1E)),
+              ),
+            )
+          else if (_registrosRecientes.isEmpty)
+            Container(
+              padding: EdgeInsets.all(40),
+              child: Text(
+                'No hay registros recientes',
+                style: TextStyle(color: Colors.grey[600], fontSize: 16),
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              itemCount: _registrosRecientes.length,
+              itemBuilder: (context, index) {
+                final registro = _registrosRecientes[index];
+                final fecha = (registro['fecha'] as Timestamp).toDate();
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 15,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey[300]!, width: 0.5),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          registro['nombreCliente'] ?? '',
+                          style: TextStyle(color: Colors.black, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Expanded(
+                        flex: 1,
+                        child: Text(
+                          registro['tipoRecorrido'] ?? '',
+                          style: TextStyle(color: Colors.black, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          DateFormat('dd/MM/yyyy').format(fecha),
+                          style: TextStyle(color: Colors.black, fontSize: 13),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 1,
+                        child: Text(
+                          registro['hora'] ?? '',
+                          style: TextStyle(color: Colors.black, fontSize: 13),
+                        ),
+                      ),
+                      Container(width: 30), // Espacio para el ícono de filtro
+                    ],
+                  ),
+                );
+              },
+            ),
+          // Botón para registrar nuevo recorrido
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(15),
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RecorridosPage(user: widget.user),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFE41E1E),
+                padding: EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'Registrar nuevo recorrido',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    final actions = [
+      {
+        'label': 'Perfil',
+        'icon': Icons.person_outline,
+        'onTap':
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PerfilPage()),
+            ),
+      },
+      {
+        'label': 'Soporte',
+        'icon': Icons.support_agent,
+        'onTap':
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SoportePage()),
+            ),
+      },
+      {
+        'label': 'Recorridos',
+        'icon': Icons.route,
+        'onTap':
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => RecorridosPage(user: widget.user),
+              ),
+            ),
+      },
+    ];
+
+    return Container(
+      margin: const EdgeInsets.all(20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children:
+            actions.map((action) {
+              return Expanded(
+                child: Container(
+                  margin: EdgeInsets.symmetric(horizontal: 5),
+                  child: ElevatedButton(
+                    onPressed: action['onTap'] as VoidCallback,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Color(0xFFE41E1E),
+                      elevation: 2,
+                      padding: EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide(color: Color(0xFFE41E1E), width: 1),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(action['icon'] as IconData, size: 24),
+                        SizedBox(height: 5),
+                        Text(
+                          action['label'] as String,
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0C2A),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          'Panel de Control',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 10)],
-          ),
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            SizedBox(
-              height: 160,
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: imageUrls.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image.network(
-                        imageUrls[index],
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A40),
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.cyanAccent.withOpacity(0.2),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+      backgroundColor: Colors.white,
+      // Drawer (menú lateral) se mantiene
+      drawer: BottomNavBar.createDrawer(context),
+      body: Builder(
+        builder: (BuildContext scaffoldContext) {
+          return Column(
+            children: [
+              _buildAviancaHeader(scaffoldContext),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildUserWelcome(),
+                      _buildRegistrosTable(),
+                      SizedBox(height: 20),
+                      _buildQuickActions(),
+                      SizedBox(height: 20),
+                    ],
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const CircleAvatar(
-                    radius: 25,
-                    backgroundColor: Colors.cyanAccent,
-                    child: Icon(Icons.person, size: 28, color: Colors.black),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Hola, ${widget.user.email ?? "Usuario"}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const Text(
-                          'Conectado al sistema',
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.bolt, color: Colors.cyanAccent, size: 28),
-                ],
-              ),
-            ),
-            const SizedBox(height: 30),
-            Expanded(
-              child: GridView.builder(
-                itemCount: options.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 20,
-                  crossAxisSpacing: 20,
                 ),
-                itemBuilder: (context, index) {
-                  final item = options[index];
-                  final isSelected = _selectedTile == index;
-
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() => _selectedTile = index);
-
-                      if (item['label'] == 'Registros') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const RegistroExcelPage(),
-                          ),
-                        );
-                      } else if (item['label'] == 'Perfil') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const PerfilPage()),
-                        );
-                      } else if (item['label'] == 'Soporte') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SoportePage(),
-                          ),
-                        );
-                      }
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(18),
-                        gradient:
-                            isSelected
-                                ? const LinearGradient(
-                                  colors: [
-                                    Color(0xFF00EFFF),
-                                    Color(0xFF008EFF),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                )
-                                : null,
-                        color: isSelected ? null : const Color(0xFF1A1A40),
-                        boxShadow:
-                            isSelected
-                                ? [
-                                  BoxShadow(
-                                    color: Colors.cyanAccent.withOpacity(0.4),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 6),
-                                  ),
-                                ]
-                                : [],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            item['icon'],
-                            color:
-                                isSelected ? Colors.white : Colors.cyanAccent,
-                            size: 36,
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            item['label'],
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.white70,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
-      bottomNavigationBar: BottomNavBar(selectedIndex: _selectedIndex),
+      // bottomNavigationBar eliminado completamente
     );
   }
 }

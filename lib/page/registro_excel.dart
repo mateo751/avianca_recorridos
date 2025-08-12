@@ -1,615 +1,554 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:excel/excel.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // <- IMPORTANTE
-import 'dart:io';
+import 'package:taxi_recorridos_app/page/home_page.dart';
+import 'package:taxi_recorridos_app/widgets/bottom_nav.dart';
 
-class RegistroExcelPage extends StatefulWidget {
-  const RegistroExcelPage({Key? key}) : super(key: key);
+class RecorridosPage extends StatefulWidget {
+  final User user;
+
+  const RecorridosPage({required this.user});
 
   @override
-  State<RegistroExcelPage> createState() => _RegistroExcelPageState();
+  _RecorridosPageState createState() => _RecorridosPageState();
 }
 
-class _RegistroExcelPageState extends State<RegistroExcelPage> {
-  List<Map<String, dynamic>> _registros = [];
-  List<Map<String, dynamic>> _registrosFiltrados = [];
-  DateTime? _fechaInicio;
-  DateTime? _fechaFin;
-  String? _tipoSeleccionado;
+class _RecorridosPageState extends State<RecorridosPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _nombreController = TextEditingController();
+  final _horaManualController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    _cargarRegistros();
-  }
+  String? _tipoRecorrido;
+  DateTime? _fecha;
+  String? _horaSeleccionada;
+  bool _otraHora = false;
+  String? _destino;
+  int? _pasajeros;
+  bool? _equipaje;
 
-  Future<void> _cargarRegistros() async {
-    final usuario = FirebaseAuth.instance.currentUser;
-
-    if (usuario == null) {
-      return;
-    }
-
-    try {
-      final snapshot =
-          await FirebaseFirestore.instance
-              .collection('recorridos')
-              .where('userId', isEqualTo: usuario.uid)
-              .orderBy('fecha') // ordenar por fecha ASCENDENTE
-              .get();
-
-      final datos =
-          snapshot.docs
-              .map((doc) {
-                final data = doc.data();
-                data['id'] = doc.id;
-                return data;
-              })
-              .where((r) => r['nombreCliente'] != null && r['fecha'] != null)
-              .toList();
-
-      setState(() {
-        _registros = datos;
-        _registrosFiltrados = datos;
-      });
-    } catch (e) {
-      print('Error al cargar registros: $e');
-    }
-  }
-
-  void _filtrar() {
-    setState(() {
-      _registrosFiltrados =
-          _registros.where((registro) {
-            final fecha = (registro['fecha'] as Timestamp).toDate();
-            final cumpleFecha =
-                (_fechaInicio == null ||
-                    fecha.isAfter(
-                      _fechaInicio!.subtract(const Duration(days: 1)),
-                    )) &&
-                (_fechaFin == null ||
-                    fecha.isBefore(_fechaFin!.add(const Duration(days: 1))));
-            final cumpleTipo =
-                _tipoSeleccionado == null ||
-                _tipoSeleccionado == registro['tipoRecorrido'];
-            return cumpleFecha && cumpleTipo;
-          }).toList();
-    });
-  }
-
-  void _quitarFiltros() {
-    setState(() {
-      _fechaInicio = null;
-      _fechaFin = null;
-      _tipoSeleccionado = null;
-      _registrosFiltrados = _registros;
-    });
-  }
-
-  Future<void> _exportarExcel() async {
-    final excel = Excel.createExcel();
-    final sheet = excel['Registros'];
-    sheet.appendRow([
-      'Cliente',
-      'Tipo',
-      'Fecha',
-      'Hora',
-      'Destino',
-      'Pasajeros',
-      'Equipaje',
-    ]);
-
-    for (var r in _registrosFiltrados) {
-      final fecha = (r['fecha'] as Timestamp).toDate();
-      sheet.appendRow([
-        r['nombreCliente'] ?? '',
-        r['tipoRecorrido'] ?? '',
-        DateFormat('dd/MM/yyyy').format(fecha),
-        r['hora'] ?? '',
-        r['destino'] ?? '',
-        r['pasajeros'].toString(),
-        r['equipaje'] ?? '',
-      ]);
-    }
-
-    final permiso = await Permission.manageExternalStorage.request();
-    if (permiso.isGranted) {
-      final dir = await getExternalStorageDirectory();
-      final path = '${dir!.path}/recorridos_filtrados.xlsx';
-      final file = File(path);
-      await file.writeAsBytes(excel.encode()!);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Archivo guardado y listo para abrir.')),
-      );
-
-      OpenFile.open(path);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Permiso de almacenamiento denegado')),
-      );
-    }
-  }
-
-  Widget _buildTabla() {
-    return Expanded(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            headingRowColor: MaterialStateProperty.all(const Color(0xFF3B8AC4)),
-            columns: const [
-              DataColumn(
-                label: Text('Cliente', style: TextStyle(color: Colors.white)),
-              ),
-              DataColumn(
-                label: Text('Tipo', style: TextStyle(color: Colors.white)),
-              ),
-              DataColumn(
-                label: Text('Fecha', style: TextStyle(color: Colors.white)),
-              ),
-              DataColumn(
-                label: Text('Hora', style: TextStyle(color: Colors.white)),
-              ),
-              DataColumn(
-                label: Text('Destino', style: TextStyle(color: Colors.white)),
-              ),
-              DataColumn(
-                label: Text('Pasajeros', style: TextStyle(color: Colors.white)),
-              ),
-              DataColumn(
-                label: Text('Equipaje', style: TextStyle(color: Colors.white)),
-              ),
-              DataColumn(
-                label: Text('Acciones', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-            rows:
-                _registrosFiltrados.map((r) {
-                  final fecha = (r['fecha'] as Timestamp).toDate();
-                  return DataRow(
-                    cells: [
-                      DataCell(
-                        Text(
-                          r['nombreCliente'],
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          r['tipoRecorrido'],
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          DateFormat('dd/MM/yyyy').format(fecha),
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      DataCell(
-                        Text(r['hora'], style: TextStyle(color: Colors.white)),
-                      ),
-                      DataCell(
-                        Text(
-                          r['destino'],
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          '${r['pasajeros']}',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          r['equipaje'],
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      DataCell(
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                Icons.edit,
-                                color: Colors.yellowAccent,
-                              ),
-                              onPressed: () async {
-                                final fechaActual =
-                                    (r['fecha'] as Timestamp).toDate();
-                                final nombreCtrl = TextEditingController(
-                                  text: r['nombreCliente'],
-                                );
-                                final horaCtrl = TextEditingController(
-                                  text: r['hora'],
-                                );
-                                final destinoCtrl = TextEditingController(
-                                  text: r['destino'],
-                                );
-                                final pasajerosCtrl = TextEditingController(
-                                  text: r['pasajeros'].toString(),
-                                );
-                                final equipajeCtrl = TextEditingController(
-                                  text: r['equipaje'],
-                                );
-                                String tipoRecorrido = r['tipoRecorrido'];
-                                DateTime? nuevaFecha = fechaActual;
-
-                                await showDialog(
-                                  context: context,
-                                  builder:
-                                      (context) => AlertDialog(
-                                        backgroundColor: const Color(
-                                          0xFF1A1A40,
-                                        ),
-                                        title: const Text(
-                                          'Editar Recorrido',
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                        content: SingleChildScrollView(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              _buildEditLabel('Cliente'),
-                                              _buildEditField(nombreCtrl),
-                                              _buildEditLabel('Hora'),
-                                              _buildEditField(horaCtrl),
-                                              _buildEditLabel('Destino'),
-                                              _buildEditField(destinoCtrl),
-                                              _buildEditLabel('Pasajeros'),
-                                              _buildEditField(pasajerosCtrl),
-                                              _buildEditLabel('Equipaje'),
-                                              _buildEditField(equipajeCtrl),
-                                              _buildEditLabel('Tipo Recorrido'),
-                                              DropdownButton<String>(
-                                                dropdownColor: Color(
-                                                  0xFF2B2B50,
-                                                ),
-                                                value: tipoRecorrido,
-                                                items:
-                                                    [
-                                                          'Entrada',
-                                                          'Salida',
-                                                          'Cancelada - Pagada',
-                                                          'Maletas',
-                                                        ]
-                                                        .map(
-                                                          (
-                                                            tipo,
-                                                          ) => DropdownMenuItem(
-                                                            value: tipo,
-                                                            child: Text(
-                                                              tipo,
-                                                              style: TextStyle(
-                                                                color:
-                                                                    Colors
-                                                                        .white,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        )
-                                                        .toList(),
-                                                onChanged:
-                                                    (value) => setState(
-                                                      () =>
-                                                          tipoRecorrido =
-                                                              value!,
-                                                    ),
-                                              ),
-                                              const SizedBox(height: 10),
-                                              _buildEditLabel('Fecha'),
-                                              ElevatedButton(
-                                                onPressed: () async {
-                                                  final fechaSeleccionada = await showDatePicker(
-                                                    context: context,
-                                                    initialDate:
-                                                        nuevaFecha ??
-                                                        DateTime.now(),
-                                                    firstDate: DateTime(2020),
-                                                    lastDate: DateTime(2035),
-                                                    builder:
-                                                        (
-                                                          context,
-                                                          child,
-                                                        ) => Theme(
-                                                          data: ThemeData.dark().copyWith(
-                                                            colorScheme:
-                                                                const ColorScheme.dark(
-                                                                  primary:
-                                                                      Colors
-                                                                          .cyanAccent,
-                                                                  surface: Color(
-                                                                    0xFF1A1A40,
-                                                                  ),
-                                                                ),
-                                                          ),
-                                                          child: child!,
-                                                        ),
-                                                  );
-                                                  if (fechaSeleccionada != null)
-                                                    nuevaFecha =
-                                                        fechaSeleccionada;
-                                                },
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                      Colors.cyanAccent,
-                                                ),
-                                                child: Text(
-                                                  'Seleccionar Fecha',
-                                                  style: TextStyle(
-                                                    color: Colors.black,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 16),
-                                              ElevatedButton(
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                      Colors.greenAccent,
-                                                ),
-                                                onPressed: () async {
-                                                  final nuevaData = {
-                                                    'nombreCliente':
-                                                        nombreCtrl.text,
-                                                    'hora': horaCtrl.text,
-                                                    'destino': destinoCtrl.text,
-                                                    'pasajeros':
-                                                        int.tryParse(
-                                                          pasajerosCtrl.text,
-                                                        ) ??
-                                                        1,
-                                                    'equipaje':
-                                                        equipajeCtrl.text,
-                                                    'tipoRecorrido':
-                                                        tipoRecorrido,
-                                                    'fecha': Timestamp.fromDate(
-                                                      nuevaFecha!,
-                                                    ),
-                                                  };
-                                                  await FirebaseFirestore
-                                                      .instance
-                                                      .collection('recorridos')
-                                                      .doc(r['id'])
-                                                      .update(nuevaData);
-                                                  Navigator.of(context).pop();
-                                                  _cargarRegistros();
-                                                },
-                                                child: Text(
-                                                  'Guardar Cambios',
-                                                  style: TextStyle(
-                                                    color: Colors.black,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                );
-                              },
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.redAccent),
-                              onPressed: () async {
-                                await FirebaseFirestore.instance
-                                    .collection('recorridos')
-                                    .doc(r['id'])
-                                    .delete();
-                                _cargarRegistros();
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEditLabel(String label) => Padding(
-    padding: const EdgeInsets.only(top: 10.0, bottom: 4),
-    child: Text(label, style: TextStyle(color: Colors.white70)),
-  );
-
-  Widget _buildEditField(TextEditingController controller) => TextField(
-    controller: controller,
-    style: TextStyle(color: Colors.white),
-    decoration: InputDecoration(
-      filled: true,
-      fillColor: Color(0xFF2B2B50),
-      border: OutlineInputBorder(),
-      hintStyle: TextStyle(color: Colors.white54),
-    ),
-  );
-
-  Widget _buildFiltros() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A40),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const Text(
-            "Filtro por fechas",
-            style: TextStyle(color: Colors.white),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2B2B50),
-                  ),
-                  onPressed: () async {
-                    final fecha = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2035),
-                      builder:
-                          (context, child) => Theme(
-                            data: ThemeData.dark().copyWith(
-                              colorScheme: const ColorScheme.dark(
-                                primary: Colors.cyanAccent,
-                                surface: Color(0xFF1A1A40),
-                              ),
-                            ),
-                            child: child!,
-                          ),
-                    );
-                    if (fecha != null) setState(() => _fechaInicio = fecha);
-                  },
-                  child: Text(
-                    _fechaInicio != null
-                        ? 'Desde: ${DateFormat('dd/MM/yyyy').format(_fechaInicio!)}'
-                        : 'Seleccionar inicio',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2B2B50),
-                  ),
-                  onPressed: () async {
-                    final fecha = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2035),
-                      builder:
-                          (context, child) => Theme(
-                            data: ThemeData.dark().copyWith(
-                              colorScheme: const ColorScheme.dark(
-                                primary: Colors.cyanAccent,
-                                surface: Color(0xFF1A1A40),
-                              ),
-                            ),
-                            child: child!,
-                          ),
-                    );
-                    if (fecha != null) setState(() => _fechaFin = fecha);
-                  },
-                  child: Text(
-                    _fechaFin != null
-                        ? 'Hasta: ${DateFormat('dd/MM/yyyy').format(_fechaFin!)}'
-                        : 'Seleccionar fin',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          DropdownButtonFormField<String>(
-            value: _tipoSeleccionado,
-            dropdownColor: const Color(0xFF2B2B50),
-            decoration: const InputDecoration(
-              filled: true,
-              fillColor: Color(0xFF2B2B50),
-              hintText: 'Filtrar por tipo',
-              hintStyle: TextStyle(color: Colors.white),
-              border: OutlineInputBorder(),
-            ),
-            style: const TextStyle(color: Colors.white),
-            iconEnabledColor: Colors.white,
-            items:
-                ['Entrada', 'Salida', 'Cancelada - Pagada', 'Maletas']
-                    .map(
-                      (tipo) => DropdownMenuItem(
-                        value: tipo,
-                        child: Text(
-                          tipo,
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    )
-                    .toList(),
-            onChanged: (value) => setState(() => _tipoSeleccionado = value),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.cyanAccent,
-                ),
-                onPressed: _filtrar,
-                icon: const Icon(Icons.filter_alt, color: Colors.black),
-                label: const Text(
-                  'Aplicar Filtros',
-                  style: TextStyle(color: Colors.black),
-                ),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                ),
-                onPressed: _quitarFiltros,
-                child: const Text(
-                  'Quitar Filtros',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  final List<String> _horasDisponibles = [
+    '17h00',
+    '18h00',
+    '18h40',
+    '21h00',
+    '23h00',
+    '01h30',
+    '02h20',
+    '05h00',
+    '05h30',
+  ];
+  final List<String> _destinos = ['Aeropuerto', 'Norte', 'Sur', 'Valles'];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0C2A),
+      backgroundColor: Colors.white, // Fondo blanco
+      // Drawer con estilo moderno
+      drawer: BottomNavBar.createDrawer(context),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A40),
         title: const Text(
-          'Registros en Excel',
-          style: TextStyle(color: Colors.white),
+          'Registro de Recorrido',
+          style: TextStyle(
+            color: Colors.black87, // Texto negro
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        iconTheme: IconThemeData(color: Colors.cyanAccent),
+        backgroundColor: Colors.white, // AppBar blanco
+        elevation: 0, // Sin sombra
+        iconTheme: const IconThemeData(color: Colors.black87), // Iconos negros
+        leading: Builder(
+          builder:
+              (context) => IconButton(
+                icon: const Icon(Icons.menu), // Icono hamburguesa
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(
-              Icons.download_for_offline,
-              color: Colors.cyanAccent,
-            ),
-            onPressed: _exportarExcel,
+            icon: const Icon(Icons.close),
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => HomePage(user: widget.user)),
+              );
+            },
+          ),
+        ],
+        // Línea sutil en la parte inferior
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: Colors.grey.withOpacity(0.2), height: 1),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              _buildCard('Tipo de Recorrido', _buildTipoRecorrido()),
+              const SizedBox(height: 20),
+              _buildCard('Fecha', _buildDatePicker()),
+              const SizedBox(height: 20),
+              _buildCard('Hora', _buildHoraDropdown()),
+              if (_otraHora)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.grey.withOpacity(0.2),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextFormField(
+                      controller: _horaManualController,
+                      style: const TextStyle(color: Colors.black87),
+                      decoration: _inputStyle('Especificar hora'),
+                      validator: (value) {
+                        if (_otraHora && (value == null || value.isEmpty)) {
+                          return 'Ingrese la hora';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 20),
+              _buildCard('Destino', _buildDestinoDropdown()),
+              const SizedBox(height: 20),
+              _buildCard('Número de Pasajeros', _buildPasajerosSelector()),
+              const SizedBox(height: 20),
+              _buildCard('¿Lleva equipaje?', _buildEquipajeSwitch()),
+              const SizedBox(height: 20),
+              _buildCard(
+                'Datos del Cliente',
+                TextFormField(
+                  controller: _nombreController,
+                  style: const TextStyle(color: Colors.black87),
+                  decoration: _inputStyle('Nombre del cliente'),
+                  validator:
+                      (value) =>
+                          value == null || value.isEmpty
+                              ? 'Ingrese el nombre'
+                              : null,
+                ),
+              ),
+              const SizedBox(height: 40),
+
+              // Botón de guardar
+              Container(
+                width: double.infinity,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE41E1E), // Color rojo de Avianca
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFE41E1E).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.save_outlined,
+                    size: 24,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    'GUARDAR RECORRIDO',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onPressed: _guardarRecorrido,
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputStyle(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey.shade500),
+      filled: true,
+      fillColor: Colors.grey.withOpacity(0.05),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE41E1E), width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
+  Widget _buildCard(String title, Widget child) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.black87,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTipoRecorrido() {
+    final tipos = ['Entrada', 'Salida', 'Cancelada - Pagada', 'Maletas'];
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children:
+          tipos.map((tipo) {
+            final selected = _tipoRecorrido == tipo;
+            return FilterChip(
+              label: Text(tipo),
+              selected: selected,
+              onSelected: (_) => setState(() => _tipoRecorrido = tipo),
+              selectedColor: const Color(0xFFE41E1E).withOpacity(0.1),
+              backgroundColor: const Color.fromARGB(
+                255,
+                201,
+                200,
+                200,
+              ).withOpacity(0.1),
+              checkmarkColor: const Color(0xFFE41E1E),
+              labelStyle: TextStyle(
+                color: selected ? const Color(0xFFE41E1E) : Colors.black87,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              side: BorderSide(
+                color:
+                    selected
+                        ? const Color(0xFFE41E1E)
+                        : const Color.fromARGB(
+                          255,
+                          201,
+                          200,
+                          200,
+                        ).withOpacity(0.3),
+                width: selected ? 2 : 1,
+              ),
+            );
+          }).toList(),
+    );
+  }
+
+  Widget _buildDatePicker() {
+    return InkWell(
+      onTap: () async {
+        final fecha = await showDatePicker(
+          context: context,
+          initialDate: DateTime.now(),
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2030),
+          builder:
+              (context, child) => Theme(
+                data: Theme.of(context).copyWith(
+                  colorScheme: const ColorScheme.light(
+                    primary: Color(0xFFE41E1E), // Color rojo de Avianca
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: Colors.black,
+                  ),
+                ),
+                child: child!,
+              ),
+        );
+        if (fecha != null) setState(() => _fecha = fecha);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color.fromARGB(255, 201, 200, 200).withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.withOpacity(0.2)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildFiltros(),
-            const SizedBox(height: 10),
-            Expanded(child: _buildTabla()),
+            Text(
+              _fecha != null
+                  ? DateFormat('dd/MM/yyyy').format(_fecha!)
+                  : 'Seleccione una fecha',
+              style: TextStyle(
+                color:
+                    _fecha != null
+                        ? Colors.black87
+                        : const Color.fromARGB(255, 201, 200, 200),
+                fontSize: 16,
+              ),
+            ),
+            const Icon(Icons.calendar_today_outlined, color: Color(0xFFE41E1E)),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildHoraDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _horaSeleccionada,
+      dropdownColor: Colors.white,
+      decoration: _inputStyle('Seleccione una hora'),
+      icon: const Icon(Icons.arrow_drop_down, color: Colors.black54),
+      style: const TextStyle(color: Colors.black87),
+      items: [
+        ..._horasDisponibles.map(
+          (h) => DropdownMenuItem(
+            value: h,
+            child: Text(h, style: const TextStyle(color: Colors.black87)),
+          ),
+        ),
+        const DropdownMenuItem(
+          value: 'otro',
+          child: Text('Otra hora', style: TextStyle(color: Colors.black87)),
+        ),
+      ],
+      onChanged: (value) {
+        setState(() {
+          _horaSeleccionada = value;
+          _otraHora = value == 'otro';
+          if (!_otraHora) _horaManualController.clear();
+        });
+      },
+      validator: (value) => value == null ? 'Seleccione una hora' : null,
+      hint: Text(
+        'Seleccione una hora',
+        style: TextStyle(color: const Color.fromARGB(255, 201, 200, 200)),
+      ),
+    );
+  }
+
+  Widget _buildDestinoDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _destino,
+      dropdownColor: Colors.white,
+      decoration: _inputStyle('Seleccione un destino'),
+      icon: const Icon(Icons.arrow_drop_down, color: Colors.black54),
+      style: const TextStyle(color: Colors.black87),
+      items:
+          _destinos
+              .map(
+                (d) => DropdownMenuItem(
+                  value: d,
+                  child: Text(d, style: const TextStyle(color: Colors.black87)),
+                ),
+              )
+              .toList(),
+      onChanged: (value) => setState(() => _destino = value),
+      validator: (value) => value == null ? 'Seleccione un destino' : null,
+      hint: Text(
+        'Seleccione un destino',
+        style: TextStyle(color: const Color.fromARGB(255, 201, 200, 200)),
+      ),
+    );
+  }
+
+  Widget _buildPasajerosSelector() {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: List.generate(4, (i) {
+        final num = i + 1;
+        final selected = _pasajeros == num;
+        return FilterChip(
+          label: Text('$num'),
+          selected: selected,
+          onSelected: (_) => setState(() => _pasajeros = num),
+          selectedColor: const Color(0xFFE41E1E).withOpacity(0.1),
+          backgroundColor: const Color.fromARGB(
+            255,
+            201,
+            200,
+            200,
+          ).withOpacity(0.1),
+          checkmarkColor: const Color(0xFFE41E1E),
+          labelStyle: TextStyle(
+            color: selected ? const Color(0xFFE41E1E) : Colors.black87,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+          ),
+          side: BorderSide(
+            color:
+                selected
+                    ? const Color(0xFFE41E1E)
+                    : const Color.fromARGB(255, 201, 200, 200).withOpacity(0.3),
+            width: selected ? 2 : 1,
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildEquipajeSwitch() {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children:
+          ['Sí', 'No'].map((e) {
+            final bool selected = _equipaje == (e == 'Sí');
+            return FilterChip(
+              label: Text(e),
+              selected: selected,
+              onSelected: (_) => setState(() => _equipaje = (e == 'Sí')),
+              selectedColor: const Color(0xFFE41E1E).withOpacity(0.1),
+              backgroundColor: const Color.fromARGB(
+                255,
+                201,
+                200,
+                200,
+              ).withOpacity(0.1),
+              checkmarkColor: const Color(0xFFE41E1E),
+              labelStyle: TextStyle(
+                color: selected ? const Color(0xFFE41E1E) : Colors.black87,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              side: BorderSide(
+                color:
+                    selected
+                        ? const Color(0xFFE41E1E)
+                        : const Color.fromARGB(
+                          255,
+                          201,
+                          200,
+                          200,
+                        ).withOpacity(0.3),
+                width: selected ? 2 : 1,
+              ),
+            );
+          }).toList(),
+    );
+  }
+
+  void _guardarRecorrido() async {
+    if (_formKey.currentState?.validate() ?? false) {
+      if (_tipoRecorrido == null ||
+          _fecha == null ||
+          (_otraHora && _horaManualController.text.isEmpty) ||
+          (!_otraHora && _horaSeleccionada == null) ||
+          _destino == null ||
+          _pasajeros == null ||
+          _equipaje == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Por favor completa todos los campos obligatorios.',
+            ),
+            backgroundColor: const Color(0xFFE41E1E),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        return;
+      }
+
+      try {
+        await FirebaseFirestore.instance.collection('recorridos').add({
+          'userId': widget.user.uid,
+          'tipoRecorrido': _tipoRecorrido,
+          'fecha': _fecha,
+          'hora': _otraHora ? _horaManualController.text : _horaSeleccionada,
+          'destino': _destino,
+          'pasajeros': _pasajeros,
+          'nombreCliente': _nombreController.text.trim(),
+          'equipaje': _equipaje == true ? 'Sí' : 'No',
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Recorrido registrado con éxito'),
+            backgroundColor: const Color(0xFF4CAF50),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+
+        setState(() {
+          _tipoRecorrido = null;
+          _fecha = null;
+          _horaSeleccionada = null;
+          _horaManualController.clear();
+          _otraHora = false;
+          _destino = null;
+          _pasajeros = null;
+          _equipaje = null;
+          _nombreController.clear();
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar: $e'),
+            backgroundColor: const Color(0xFFE41E1E),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    }
   }
 }
