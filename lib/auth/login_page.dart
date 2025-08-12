@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:taxi_recorridos_app/auth/register_page.dart';
-import 'package:taxi_recorridos_app/page/home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -17,19 +16,13 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _signIn() async {
     try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      User? user = userCredential.user;
-      if (user != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => HomePage(user: user)),
-        );
-      }
+      // No necesitas navegar manualmente, authStateChanges se encargará
     } on FirebaseAuthException catch (e) {
-      String message = 'Error al iniciar sesión';
+      String message = 'Error inesperado. Verifica tu conexión.';
       if (e.code == 'user-not-found') {
         message = 'No existe un usuario con ese correo.';
       } else if (e.code == 'wrong-password') {
@@ -68,11 +61,8 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo Avianca
                 Image.asset('lib/assets/logoAvianca.png', height: 100),
                 const SizedBox(height: 20),
-
-                // Email
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -85,7 +75,7 @@ class _LoginPageState extends State<LoginPage> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    hintText: 'camilayokoo@gmail.com',
+                    hintText: 'correo@example.com',
                     filled: true,
                     fillColor: Colors.grey[200],
                     border: OutlineInputBorder(
@@ -95,8 +85,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Contraseña
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -119,8 +107,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 const SizedBox(height: 30),
-
-                // Botón login
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -141,15 +127,12 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 16),
                 Text(
                   'He olvidado mi contraseña',
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
                 const SizedBox(height: 24),
-
-                // Botón registrar
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
