@@ -467,7 +467,7 @@ class _RecorridosPageState extends State<RecorridosPage> {
         await FirebaseFirestore.instance.collection('recorridos').add({
           'userId': widget.user.uid,
           'tipoRecorrido': _tipoRecorrido,
-          'fecha': _fecha,
+          'fecha': Timestamp.fromDate(_fecha!), // <-- este cambio
           'hora': _otraHora ? _horaManualController.text : _horaSeleccionada,
           'destino': _destino,
           'pasajeros': _pasajeros,

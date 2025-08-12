@@ -155,10 +155,16 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildRegistrosTable() {
+    final query = FirebaseFirestore.instance
+        .collection('recorridos')
+        .where('userId', isEqualTo: widget.user.uid)
+        .orderBy('fecha', descending: true)
+        .limit(5);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: Color(0xFFE8E8E8),
+        color: const Color(0xFFE8E8E8),
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
@@ -166,14 +172,14 @@ class _HomePageState extends State<HomePage> {
           // Header de la tabla
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: Color(0xFFE8E8E8),
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(15),
                 topRight: Radius.circular(15),
               ),
             ),
-            child: Row(
+            child: const Row(
               children: [
                 Expanded(
                   flex: 2,
@@ -219,90 +225,126 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 ),
-                Container(
-                  width: 30,
-                  child: Icon(Icons.filter_list, color: Colors.black, size: 20),
-                ),
+                SizedBox(width: 30),
               ],
             ),
           ),
-          // Contenido de la tabla
-          if (_cargandoRegistros)
-            Container(
-              padding: EdgeInsets.all(40),
-              child: Center(
-                child: CircularProgressIndicator(color: Color(0xFFE41E1E)),
-              ),
-            )
-          else if (_registrosRecientes.isEmpty)
-            Container(
-              padding: EdgeInsets.all(40),
-              child: Text(
-                'No hay registros recientes',
-                style: TextStyle(color: Colors.grey[600], fontSize: 16),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              itemCount: _registrosRecientes.length,
-              itemBuilder: (context, index) {
-                final registro = _registrosRecientes[index];
-                final fecha = (registro['fecha'] as Timestamp).toDate();
 
+          // Contenido en vivo desde Firestore
+          StreamBuilder<QuerySnapshot>(
+            stream: query.snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 15,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey[300]!, width: 0.5),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          registro['nombreCliente'] ?? '',
-                          style: TextStyle(color: Colors.black, fontSize: 13),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Text(
-                          registro['tipoRecorrido'] ?? '',
-                          style: TextStyle(color: Colors.black, fontSize: 13),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          DateFormat('dd/MM/yyyy').format(fecha),
-                          style: TextStyle(color: Colors.black, fontSize: 13),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Text(
-                          registro['hora'] ?? '',
-                          style: TextStyle(color: Colors.black, fontSize: 13),
-                        ),
-                      ),
-                      Container(width: 30), // Espacio para el ícono de filtro
-                    ],
+                  padding: const EdgeInsets.all(40),
+                  child: const Center(
+                    child: CircularProgressIndicator(color: Color(0xFFE41E1E)),
                   ),
                 );
-              },
-            ),
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Container(
+                  padding: const EdgeInsets.all(40),
+                  child: Text(
+                    'No hay registros recientes',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  ),
+                );
+              }
+
+              final docs = snapshot.data!.docs;
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: docs.length,
+                itemBuilder: (context, index) {
+                  final data = docs[index].data() as Map<String, dynamic>;
+                  final nombre = (data['nombreCliente'] ?? '').toString();
+                  final tipo = (data['tipoRecorrido'] ?? '').toString();
+                  final hora = (data['hora'] ?? '').toString();
+
+                  DateTime? fechaDt;
+                  final fechaVal = data['fecha'];
+                  if (fechaVal is Timestamp) {
+                    fechaDt = fechaVal.toDate();
+                  } else if (fechaVal is DateTime) {
+                    fechaDt = fechaVal;
+                  }
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Colors.grey[300]!,
+                          width: 0.5,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            nombre,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 13,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Text(
+                            tipo,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 13,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            fechaDt != null
+                                ? DateFormat('dd/MM/yyyy').format(fechaDt)
+                                : '-',
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Text(
+                            hora,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 30),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+
           // Botón para registrar nuevo recorrido
           Container(
             width: double.infinity,
-            padding: EdgeInsets.all(15),
+            padding: const EdgeInsets.all(15),
             child: ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -313,13 +355,13 @@ class _HomePageState extends State<HomePage> {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFE41E1E),
-                padding: EdgeInsets.symmetric(vertical: 12),
+                backgroundColor: const Color(0xFFE41E1E),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: Text(
+              child: const Text(
                 'Registrar nuevo recorrido',
                 style: TextStyle(
                   color: Colors.white,

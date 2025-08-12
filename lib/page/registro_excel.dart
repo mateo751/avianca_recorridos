@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
+import 'package:taxi_recorridos_app/page/home_page.dart';
 
 class RegistroExcelPage extends StatefulWidget {
   final User user;
@@ -17,65 +18,93 @@ class RegistroExcelPage extends StatefulWidget {
 }
 
 class _RegistroExcelPageState extends State<RegistroExcelPage> {
-  String? _filtroTipo;
+  String? _filtroTipo; // null = Todos
   DateTime? _fechaDesde;
   DateTime? _fechaHasta;
 
   bool _isLoading = false;
-
   List<Map<String, dynamic>> _datos = [];
 
   @override
   void initState() {
     super.initState();
-    _cargarDatos(); // Carga inicial sin filtro
+    _cargarDatos(); // carga inicial
   }
 
   Future<void> _cargarDatos() async {
+    // Validación simple de rango
+    if (_fechaDesde != null &&
+        _fechaHasta != null &&
+        _fechaDesde!.isAfter(_fechaHasta!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El rango de fechas es inválido')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
-    Query query = FirebaseFirestore.instance
-        .collection('recorridos')
-        .where('userId', isEqualTo: widget.user.uid);
+    try {
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+          .collection('recorridos')
+          .where('userId', isEqualTo: widget.user.uid);
 
-    if (_filtroTipo != null && _filtroTipo!.isNotEmpty) {
-      query = query.where('tipoRecorrido', isEqualTo: _filtroTipo);
+      if (_filtroTipo != null && _filtroTipo!.isNotEmpty) {
+        query = query.where('tipoRecorrido', isEqualTo: _filtroTipo);
+      }
+
+      // Rango por fecha (inclusive en el día final)
+      if (_fechaDesde != null) {
+        query = query.where(
+          'fecha',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(
+            DateTime(_fechaDesde!.year, _fechaDesde!.month, _fechaDesde!.day),
+          ),
+        );
+      }
+      if (_fechaHasta != null) {
+        final finDia = DateTime(
+          _fechaHasta!.year,
+          _fechaHasta!.month,
+          _fechaHasta!.day,
+        ).add(const Duration(days: 1));
+        query = query.where('fecha', isLessThan: Timestamp.fromDate(finDia));
+      }
+
+      // IMPORTANTE: orderBy por el mismo campo de rango
+      query = query.orderBy('fecha', descending: true);
+
+      final snapshot = await query.get();
+
+      _datos =
+          snapshot.docs.map((doc) {
+            final data = doc.data();
+
+            DateTime? fecha;
+            final rawFecha = data['fecha'];
+            if (rawFecha is Timestamp) {
+              fecha = rawFecha.toDate();
+            } else if (rawFecha is DateTime) {
+              fecha = rawFecha;
+            }
+
+            return {
+              'tipoRecorrido': (data['tipoRecorrido'] ?? '').toString(),
+              'fecha': fecha ?? DateTime.fromMillisecondsSinceEpoch(0),
+              'hora': (data['hora'] ?? '').toString(),
+              'destino': (data['destino'] ?? '').toString(),
+              'pasajeros': (data['pasajeros'] ?? '').toString(),
+              'nombreCliente': (data['nombreCliente'] ?? '').toString(),
+              'equipaje': (data['equipaje'] ?? '').toString(),
+            };
+          }).toList();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al cargar datos: $e')));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    if (_fechaDesde != null) {
-      query = query.where(
-        'fecha',
-        isGreaterThanOrEqualTo: Timestamp.fromDate(_fechaDesde!),
-      );
-    }
-
-    if (_fechaHasta != null) {
-      // Sumar 1 día para incluir la fecha final completa
-      final fechaHastaEnd = _fechaHasta!.add(const Duration(days: 1));
-      query = query.where(
-        'fecha',
-        isLessThan: Timestamp.fromDate(fechaHastaEnd),
-      );
-    }
-
-    final snapshot = await query.orderBy('fecha', descending: true).get();
-
-    _datos =
-        snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>? ?? {};
-
-          return {
-            'tipoRecorrido': data['tipoRecorrido'] ?? '',
-            'fecha': (data['fecha'] as Timestamp).toDate(),
-            'hora': data['hora'] ?? '',
-            'destino': data['destino'] ?? '',
-            'pasajeros': data['pasajeros']?.toString() ?? '',
-            'nombreCliente': data['nombreCliente'] ?? '',
-            'equipaje': data['equipaje'] ?? '',
-          };
-        }).toList();
-
-    setState(() => _isLoading = false);
   }
 
   void _quitarFiltro() {
@@ -95,50 +124,61 @@ class _RegistroExcelPageState extends State<RegistroExcelPage> {
       return;
     }
 
-    final workbook = xlsio.Workbook();
-    final sheet = workbook.worksheets[0];
+    try {
+      final workbook = xlsio.Workbook();
+      final sheet = workbook.worksheets[0];
 
-    // Títulos de columnas
-    final columnas = [
-      'Tipo Recorrido',
-      'Fecha',
-      'Hora',
-      'Destino',
-      'Pasajeros',
-      'Nombre Cliente',
-      'Equipaje',
-    ];
+      // Encabezados
+      final columnas = [
+        'Tipo Recorrido',
+        'Fecha',
+        'Hora',
+        'Destino',
+        'Pasajeros',
+        'Nombre Cliente',
+        'Equipaje',
+      ];
 
-    // Encabezados
-    for (int i = 0; i < columnas.length; i++) {
-      sheet.getRangeByIndex(1, i + 1).setText(columnas[i]);
-      sheet.getRangeByIndex(1, i + 1).cellStyle.bold = true;
-      sheet.getRangeByIndex(1, i + 1).cellStyle.backColor = '#D9E1F2';
+      for (int i = 0; i < columnas.length; i++) {
+        final cell = sheet.getRangeByIndex(1, i + 1);
+        cell.setText(columnas[i]);
+        cell.cellStyle.bold = true;
+        cell.cellStyle.backColor = '#D9E1F2';
+      }
+
+      // Datos
+      for (int i = 0; i < _datos.length; i++) {
+        final fila = _datos[i];
+        sheet.getRangeByIndex(i + 2, 1).setText(fila['tipoRecorrido']);
+        sheet.getRangeByIndex(i + 2, 2).setDateTime(fila['fecha'] as DateTime);
+        sheet.getRangeByIndex(i + 2, 2).numberFormat = 'dd/MM/yyyy';
+        sheet.getRangeByIndex(i + 2, 3).setText(fila['hora']);
+        sheet.getRangeByIndex(i + 2, 4).setText(fila['destino']);
+        sheet.getRangeByIndex(i + 2, 5).setText(fila['pasajeros'].toString());
+        sheet.getRangeByIndex(i + 2, 6).setText(fila['nombreCliente']);
+        sheet.getRangeByIndex(i + 2, 7).setText(fila['equipaje']);
+      }
+
+      // Ajuste de ancho de columnas
+      for (int c = 1; c <= columnas.length; c++) {
+        sheet.autoFitColumn(c);
+      }
+
+      final List<int> bytes = workbook.saveAsStream();
+      workbook.dispose();
+
+      final dir = await getApplicationDocumentsDirectory();
+      final path =
+          '${dir.path}/recorridos_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.xlsx';
+      final file = File(path);
+      await file.writeAsBytes(bytes, flush: true);
+
+      await OpenFile.open(path);
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al exportar: $e')));
     }
-
-    // Datos
-    for (int i = 0; i < _datos.length; i++) {
-      final fila = _datos[i];
-      sheet.getRangeByIndex(i + 2, 1).setText(fila['tipoRecorrido']);
-      sheet.getRangeByIndex(i + 2, 2).setDateTime(fila['fecha']);
-      sheet.getRangeByIndex(i + 2, 2).numberFormat = 'dd/MM/yyyy';
-      sheet.getRangeByIndex(i + 2, 3).setText(fila['hora']);
-      sheet.getRangeByIndex(i + 2, 4).setText(fila['destino']);
-      sheet.getRangeByIndex(i + 2, 5).setText(fila['pasajeros']);
-      sheet.getRangeByIndex(i + 2, 6).setText(fila['nombreCliente']);
-      sheet.getRangeByIndex(i + 2, 7).setText(fila['equipaje']);
-    }
-
-    final List<int> bytes = workbook.saveAsStream();
-    workbook.dispose();
-
-    final dir = await getApplicationDocumentsDirectory();
-    final path =
-        '${dir.path}/recorridos_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.xlsx';
-    final file = File(path);
-    await file.writeAsBytes(bytes, flush: true);
-
-    await OpenFile.open(path);
   }
 
   Future<void> _seleccionarFechaDesde() async {
@@ -161,9 +201,7 @@ class _RegistroExcelPageState extends State<RegistroExcelPage> {
           ),
     );
     if (fecha != null) {
-      setState(() {
-        _fechaDesde = fecha;
-      });
+      setState(() => _fechaDesde = fecha);
     }
   }
 
@@ -187,9 +225,7 @@ class _RegistroExcelPageState extends State<RegistroExcelPage> {
           ),
     );
     if (fecha != null) {
-      setState(() {
-        _fechaHasta = fecha;
-      });
+      setState(() => _fechaHasta = fecha);
     }
   }
 
@@ -201,6 +237,15 @@ class _RegistroExcelPageState extends State<RegistroExcelPage> {
       appBar: AppBar(
         title: const Text('Registro Recorridos - Excel'),
         backgroundColor: const Color(0xFFE41E1E),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => HomePage(user: widget.user)),
+            );
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.download),
@@ -224,7 +269,7 @@ class _RegistroExcelPageState extends State<RegistroExcelPage> {
                 child: Column(
                   children: [
                     // Filtrar por tipo
-                    DropdownButtonFormField<String>(
+                    DropdownButtonFormField<String?>(
                       value: _filtroTipo,
                       decoration: InputDecoration(
                         labelText: 'Filtrar por tipo',
@@ -233,19 +278,18 @@ class _RegistroExcelPageState extends State<RegistroExcelPage> {
                         ),
                       ),
                       items: [
-                        const DropdownMenuItem(
+                        const DropdownMenuItem<String?>(
                           value: null,
                           child: Text('Todos'),
                         ),
                         ...tipos.map(
-                          (t) => DropdownMenuItem(value: t, child: Text(t)),
+                          (t) => DropdownMenuItem<String?>(
+                            value: t,
+                            child: Text(t),
+                          ),
                         ),
                       ],
-                      onChanged: (val) {
-                        setState(() {
-                          _filtroTipo = val;
-                        });
-                      },
+                      onChanged: (val) => setState(() => _filtroTipo = val),
                     ),
                     const SizedBox(height: 12),
 
@@ -330,7 +374,7 @@ class _RegistroExcelPageState extends State<RegistroExcelPage> {
 
             const SizedBox(height: 12),
 
-            // Tabla o mensaje de carga
+            // Tabla
             _isLoading
                 ? const Expanded(
                   child: Center(child: CircularProgressIndicator()),
@@ -361,7 +405,7 @@ class _RegistroExcelPageState extends State<RegistroExcelPage> {
                                   Text(
                                     DateFormat(
                                       'dd/MM/yyyy',
-                                    ).format(dato['fecha']),
+                                    ).format(dato['fecha'] as DateTime),
                                   ),
                                 ),
                                 DataCell(Text(dato['hora'])),
