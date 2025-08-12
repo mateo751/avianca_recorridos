@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:taxi_recorridos_app/page/recorridos_page.dart';
 import 'package:taxi_recorridos_app/page/registro_excel.dart';
 import 'package:taxi_recorridos_app/page/perfil_page.dart';
 import 'package:taxi_recorridos_app/page/soporte_page.dart';

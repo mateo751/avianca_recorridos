@@ -4,6 +4,7 @@ import 'package:taxi_recorridos_app/auth/login_page.dart';
 import 'package:taxi_recorridos_app/page/home_page.dart';
 import 'package:taxi_recorridos_app/page/recorridos_page.dart';
 import 'package:taxi_recorridos_app/page/perfil_page.dart';
+import 'package:taxi_recorridos_app/page/registro_excel.dart';
 import 'package:taxi_recorridos_app/page/soporte_page.dart';
 
 class BottomNavBar extends StatefulWidget {
@@ -101,6 +102,24 @@ class BottomNavBar extends StatefulWidget {
                         );
                       },
                     ),
+                    // Nuevo item: Descargar Reporte
+                    _buildDrawerItem(
+                      context,
+                      icon: Icons.download,
+                      title: 'Desacargar Reporte',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (_) => RegistroExcelPage(
+                                  user: FirebaseAuth.instance.currentUser!,
+                                ),
+                          ),
+                        );
+                      },
+                    ),
                     _buildDrawerItem(
                       context,
                       icon: Icons.person_outline,
@@ -132,7 +151,7 @@ class BottomNavBar extends StatefulWidget {
               ),
             ),
 
-            // Botón de Log out en la parte inferior con estilo verde
+            // Botón de Log out en la parte inferior con estilo rojo
             Container(
               padding: const EdgeInsets.all(20),
               child: Container(
@@ -145,12 +164,7 @@ class BottomNavBar extends StatefulWidget {
                 child: ListTile(
                   leading: const Icon(
                     Icons.logout_outlined,
-                    color: Color.fromARGB(
-                      255,
-                      255,
-                      0,
-                      0,
-                    ), // Verde para el icono
+                    color: Color.fromARGB(255, 255, 0, 0), // Rojo para el icono
                     size: 24,
                   ),
                   title: const Text(
@@ -161,7 +175,7 @@ class BottomNavBar extends StatefulWidget {
                         255,
                         0,
                         0,
-                      ), // Verde para el texto
+                      ), // Rojo para el texto
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
