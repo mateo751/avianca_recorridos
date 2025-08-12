@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "340670335434",
+    "project_id": "aviancarecorridos",
+    "storage_bucket": "aviancarecorridos.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:340670335434:android:26d5a0685df6e2d8cb6733",
+        "android_client_info": {
+          "package_name": "com.aviancarecorridos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDBTVJjGI9RiW3O3WE_PfNwCzGKGnXW_GI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
