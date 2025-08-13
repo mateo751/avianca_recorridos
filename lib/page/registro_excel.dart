@@ -49,17 +49,21 @@ class _RegistroExcelPageState extends State<RegistroExcelPage> {
           .collection('recorridos')
           .where('userId', isEqualTo: widget.user.uid);
 
+      // Filtro por tipo (requiere índice: userId Asc + tipoRecorrido Asc + fecha Desc)
       if (_filtroTipo != null && _filtroTipo!.isNotEmpty) {
         query = query.where('tipoRecorrido', isEqualTo: _filtroTipo);
       }
 
       // Rango por fecha (inclusive en el día final)
       if (_fechaDesde != null) {
+        final inicio = DateTime(
+          _fechaDesde!.year,
+          _fechaDesde!.month,
+          _fechaDesde!.day,
+        );
         query = query.where(
           'fecha',
-          isGreaterThanOrEqualTo: Timestamp.fromDate(
-            DateTime(_fechaDesde!.year, _fechaDesde!.month, _fechaDesde!.day),
-          ),
+          isGreaterThanOrEqualTo: Timestamp.fromDate(inicio),
         );
       }
       if (_fechaHasta != null) {
@@ -71,7 +75,7 @@ class _RegistroExcelPageState extends State<RegistroExcelPage> {
         query = query.where('fecha', isLessThan: Timestamp.fromDate(finDia));
       }
 
-      // IMPORTANTE: orderBy por el mismo campo de rango
+      // orderBy por el mismo campo del rango
       query = query.orderBy('fecha', descending: true);
 
       final snapshot = await query.get();
@@ -282,12 +286,14 @@ class _RegistroExcelPageState extends State<RegistroExcelPage> {
                           value: null,
                           child: Text('Todos'),
                         ),
-                        ...tipos.map(
-                          (t) => DropdownMenuItem<String?>(
-                            value: t,
-                            child: Text(t),
-                          ),
-                        ),
+                        ...tipos
+                            .map(
+                              (t) => DropdownMenuItem<String?>(
+                                value: t,
+                                child: Text(t),
+                              ),
+                            )
+                            .toList(),
                       ],
                       onChanged: (val) => setState(() => _filtroTipo = val),
                     ),
