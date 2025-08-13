@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:taxi_recorridos_app/auth/login_page.dart';
 import 'package:taxi_recorridos_app/page/home_page.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(); // Usa tus google-services.json / Info.plist
   runApp(const MyApp());
 }
 
@@ -18,7 +18,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Taxi Recorridos',
-      theme: ThemeData.dark(),
+      theme: ThemeData(
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: Colors.white,
+        useMaterial3: true,
+      ),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
@@ -26,11 +30,11 @@ class MyApp extends StatelessWidget {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             );
-          } else if (snapshot.hasData) {
-            return HomePage(user: snapshot.data!);
-          } else {
-            return const LoginPage();
           }
+          if (snapshot.hasData) {
+            return HomePage(user: snapshot.data!);
+          }
+          return const LoginPage();
         },
       ),
     );

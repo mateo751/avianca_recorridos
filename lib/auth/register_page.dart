@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:taxi_recorridos_app/auth/login_page.dart';
+import '../auth/login_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({Key? key}) : super(key: key);
@@ -98,7 +98,11 @@ class _RegisterPageState extends State<RegisterPage> {
                 const Center(
                   child: Text(
                     'Registro de usuario',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black, // ← AGREGADO: color negro explícito
+                    ),
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -106,11 +110,17 @@ class _RegisterPageState extends State<RegisterPage> {
                 // Nombre
                 const Text(
                   'Nombre',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black, // ← AGREGADO: color negro explícito
+                  ),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _nameController,
+                  style: TextStyle(
+                    color: Colors.black,
+                  ), // ← AGREGADO: texto negro al escribir
                   decoration: InputDecoration(
                     hintText: 'Camila Yokoo',
                     filled: true,
@@ -126,12 +136,18 @@ class _RegisterPageState extends State<RegisterPage> {
                 // Correo
                 const Text(
                   'Correo electronico',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black, // ← AGREGADO: color negro explícito
+                  ),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
+                  style: TextStyle(
+                    color: Colors.black,
+                  ), // ← AGREGADO: texto negro al escribir
                   decoration: InputDecoration(
                     hintText: 'camilayokoo@gmail.com',
                     filled: true,
@@ -147,12 +163,18 @@ class _RegisterPageState extends State<RegisterPage> {
                 // Contraseña
                 const Text(
                   'Contraseña',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black, // ← AGREGADO: color negro explícito
+                  ),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _passwordController,
                   obscureText: true,
+                  style: TextStyle(
+                    color: Colors.black,
+                  ), // ← AGREGADO: texto negro al escribir
                   decoration: InputDecoration(
                     hintText: '***********',
                     filled: true,
@@ -182,6 +204,8 @@ class _RegisterPageState extends State<RegisterPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color:
+                            Colors.white, // ← AGREGADO: texto blanco en botón
                       ),
                     ),
                   ),

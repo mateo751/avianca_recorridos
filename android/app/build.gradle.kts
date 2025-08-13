@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.aviancarecorridos" // Debe coincidir exactamente
-        minSdk = flutter.minSdkVersion
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
